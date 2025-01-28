@@ -61,5 +61,20 @@ if [ "$IS_LOCAL" == "true" ]; then
   trap cleanup EXIT
 fi
 
+# install current repo as global node
+node . version $NPM_VERSION --ignore-scripts --no-git-tag-version
+node . pack . --pack-destination="$RUNNER_TEMP" --ignore-scripts
+NPM_TARBALL="$RUNNER_TEMP/npm-$NPM_VERSION.tgz"
+echo "attempting to install $NPM_TARBALL"
+node . install $NPM_TARBALL --global --ignore-scripts
+
+# run the tests if we are sure we have the right version globally installed
+NPM_GLOBAL_VERSION="$(npm --version)"
+if [ "$NPM_GLOBAL_VERSION" != "$NPM_VERSION" ]; then
+  echo "global npm is not the correct version for smoke-publish"
+  echo "found: $NPM_GLOBAL_VERSION, expected: $NPM_VERSION"
+  exit 1
+fi
+
 # this script leaves the repo dirty
 node scripts/publish.js --pack-destination=$RUNNER_TEMP --smoke-publish=true

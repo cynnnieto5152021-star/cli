@@ -61,31 +61,20 @@ if [ "$IS_LOCAL" == "true" ]; then
   trap cleanup EXIT
 fi
 
-echo '1'
-
-# Version the local source of npm with the current git sha and
-# and pack and install it globally the same way we would if we
-# were publishing it to the registry. The only difference is in the
-# publish.js script which will only pack and not publish
+# install current repo as global node
 node . version $NPM_VERSION --ignore-scripts --no-git-tag-version
 node . pack . --pack-destination="$RUNNER_TEMP" --ignore-scripts
 NPM_TARBALL="$RUNNER_TEMP/npm-$NPM_VERSION.tgz"
 echo "attempting to install $NPM_TARBALL"
-
 node . install $NPM_TARBALL --global --ignore-scripts
 
-echo '2'
-
-# Only run the tests if we are sure we have the right version
-# otherwise the tests being run are pointless
+# run the tests if we are sure we have the right version globally installed
 NPM_GLOBAL_VERSION="$(npm --version)"
 if [ "$NPM_GLOBAL_VERSION" != "$NPM_VERSION" ]; then
   echo "global npm is not the correct version for smoke-publish"
   echo "found: $NPM_GLOBAL_VERSION, expected: $NPM_VERSION"
   exit 1
 fi
-
-echo '3'
 
 # Install dev deps only for smoke tests so they can be run
 node . install -w smoke-tests --ignore-scripts --no-audit --no-fund
