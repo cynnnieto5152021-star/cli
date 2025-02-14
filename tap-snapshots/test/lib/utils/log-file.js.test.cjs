@@ -6,8 +6,8 @@
  */
 'use strict'
 exports[`test/lib/utils/log-file.js > TAP > snapshot > must match snapshot 1`] = `
-0 verbose logfile logs-max:10 dir:{CWD}/.tap/fixtures/test-lib-utils-log-file.js-snapshot/{DATE}-
-1 verbose logfile {CWD}/.tap/fixtures/test-lib-utils-log-file.js-snapshot/{DATE}-debug-0.log
+0 verbose logfile logs-max:10 dir:{CWD}/{DATE}-
+1 verbose logfile {CWD}/{DATE}-debug-0.log
 2 silly logfile done cleaning log files
 3 error no prefix
 4 error prefix with prefix
