@@ -654,6 +654,32 @@ dedupe-entries@1.0.0 {CWD}/prefix
 \`-- @npmcli/c@1.0.0
 `
 
+exports[`test/lib/commands/ls.js TAP ls with workspaces and overrides filtering by overridden workspace dependency > should only show the overridden dependency when filtering 1`] = `
+root-project@1.0.0 {CWD}/prefix
+\`-- workspace-pkg@1.0.0 -> ./packages/pkg-a
+  \`-- dep-to-override@1.0.0 overridden
+`
+
+exports[`test/lib/commands/ls.js TAP ls with workspaces and overrides multiple workspace packages with nested overrides > should show nested overrides across workspaces 1`] = `
+root-project@1.0.0 {CWD}/prefix
++-- workspace-a@1.0.0 -> ./packages/pkg-a
+| \`-- workspace-b@1.0.0 deduped -> ./packages/pkg-b
+\`-- workspace-b@1.0.0 -> ./packages/pkg-b
+  \`-- nested-dep@1.0.0 overridden
+`
+
+exports[`test/lib/commands/ls.js TAP ls with workspaces and overrides workspace dependency overridden by root package > should show workspace dependency as overridden 1`] = `
+root-project@1.0.0 {CWD}/prefix
+\`-- workspace-pkg@1.0.0 -> ./packages/pkg-a
+  \`-- dep-to-override@1.0.0 overridden
+`
+
+exports[`test/lib/commands/ls.js TAP ls with workspaces and overrides workspace overrides with parseable output > should show overridden status in parseable output 1`] = `
+{CWD}/prefix:root-project@1.0.0
+{CWD}/prefix/node_modules/workspace-pkg:workspace-pkg@1.0.0:{CWD}/prefix/packages/pkg-a
+{CWD}/prefix/node_modules/dep-to-override:dep-to-override@1.0.0
+`
+
 exports[`test/lib/commands/ls.js TAP ls workspace and missing optional dep > should omit missing optional dep 1`] = `
 root@ {CWD}/prefix
 +-- baz@1.0.0 -> ./baz

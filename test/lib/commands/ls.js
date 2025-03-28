@@ -1732,6 +1732,307 @@ t.test('ls', async t => {
   })
 })
 
+t.test('ls with workspaces and overrides', async t => {
+  t.test('workspace package overridden by root package', async t => {
+    const { result, ls } = await mockLs(t, {
+      config: {
+        'include-workspace-root': true,
+        color: 'always',
+      },
+      prefixDir: {
+        'package.json': JSON.stringify({
+          name: 'root-project',
+          version: '1.0.0',
+          workspaces: ['packages/*'],
+          dependencies: {
+            'shared-dep': '^2.0.0',
+          },
+          overrides: {
+            'workspace-pkg': '2.0.0',
+            'dep-to-override': '1.0.0',
+          },
+        }),
+        packages: {
+          'pkg-a': {
+            'package.json': JSON.stringify({
+              name: 'workspace-pkg',
+              version: '1.0.0',
+              dependencies: {
+                'dep-to-override': '^2.0.0',
+                'shared-dep': '^1.0.0',
+              },
+            }),
+          },
+        },
+        node_modules: {
+          'workspace-pkg': t.fixture('symlink', '../packages/pkg-a'),
+          'shared-dep': {
+            'package.json': JSON.stringify({
+              name: 'shared-dep',
+              version: '2.0.0',
+            }),
+          },
+          'dep-to-override': {
+            'package.json': JSON.stringify({
+              name: 'dep-to-override',
+              version: '1.0.0',
+            }),
+          },
+        },
+      },
+    })
+
+    await ls.exec([])
+    t.matchSnapshot(
+      cleanCwd(result()),
+      'should show workspace package as overridden'
+    )
+  })
+
+  t.test('workspace dependency overridden by root package', async t => {
+    const { result, ls } = await mockLs(t, {
+      config: {},
+      prefixDir: {
+        'package.json': JSON.stringify({
+          name: 'root-project',
+          version: '1.0.0',
+          workspaces: ['packages/*'],
+          overrides: {
+            'dep-to-override': '1.0.0',
+          },
+        }),
+        packages: {
+          'pkg-a': {
+            'package.json': JSON.stringify({
+              name: 'workspace-pkg',
+              version: '1.0.0',
+              dependencies: {
+                'dep-to-override': '^2.0.0',
+              },
+            }),
+          },
+        },
+        node_modules: {
+          'workspace-pkg': t.fixture('symlink', '../packages/pkg-a'),
+          'dep-to-override': {
+            'package.json': JSON.stringify({
+              name: 'dep-to-override',
+              version: '1.0.0',
+            }),
+          },
+        },
+      },
+    })
+
+    await ls.exec([])
+    t.matchSnapshot(
+      cleanCwd(result()),
+      'should show workspace dependency as overridden'
+    )
+  })
+
+  t.test('workspace overrides with json output', async t => {
+    const { result, ls } = await mockLs(t, {
+      config: {
+        json: true,
+      },
+      prefixDir: {
+        'package.json': JSON.stringify({
+          name: 'root-project',
+          version: '1.0.0',
+          workspaces: ['packages/*'],
+          overrides: {
+            'dep-to-override': '1.0.0',
+          },
+        }),
+        packages: {
+          'pkg-a': {
+            'package.json': JSON.stringify({
+              name: 'workspace-pkg',
+              version: '1.0.0',
+              dependencies: {
+                'dep-to-override': '^2.0.0',
+              },
+            }),
+          },
+        },
+        node_modules: {
+          'workspace-pkg': t.fixture('symlink', '../packages/pkg-a'),
+          'dep-to-override': {
+            'package.json': JSON.stringify({
+              name: 'dep-to-override',
+              version: '1.0.0',
+              overridden: true,
+            }),
+          },
+        },
+      },
+    })
+
+    await ls.exec([])
+    t.same(
+      jsonParse(result()),
+      {
+        name: 'root-project',
+        version: '1.0.0',
+        dependencies: {
+          'workspace-pkg': {
+            version: '1.0.0',
+            resolved: 'file:packages/pkg-a',
+            overridden: false,
+            dependencies: {
+              'dep-to-override': {
+                version: '1.0.0',
+                overridden: true,
+              },
+            },
+          },
+        },
+      },
+      'should show overridden status in JSON output'
+    )
+  })
+
+  t.test('workspace overrides with parseable output', async t => {
+    const { result, ls } = await mockLs(t, {
+      config: {
+        parseable: true,
+        long: true,
+      },
+      prefixDir: {
+        'package.json': JSON.stringify({
+          name: 'root-project',
+          version: '1.0.0',
+          workspaces: ['packages/*'],
+          overrides: {
+            'dep-to-override': '1.0.0',
+          },
+        }),
+        packages: {
+          'pkg-a': {
+            'package.json': JSON.stringify({
+              name: 'workspace-pkg',
+              version: '1.0.0',
+              dependencies: {
+                'dep-to-override': '^2.0.0',
+              },
+            }),
+          },
+        },
+        node_modules: {
+          'workspace-pkg': t.fixture('symlink', '../packages/pkg-a'),
+          'dep-to-override': {
+            'package.json': JSON.stringify({
+              name: 'dep-to-override',
+              version: '1.0.0',
+            }),
+          },
+        },
+      },
+    })
+
+    await ls.exec([])
+    t.matchSnapshot(
+      cleanCwd(result()),
+      'should show overridden status in parseable output'
+    )
+  })
+
+  t.test('multiple workspace packages with nested overrides', async t => {
+    const { result, ls } = await mockLs(t, {
+      config: {},
+      prefixDir: {
+        'package.json': JSON.stringify({
+          name: 'root-project',
+          version: '1.0.0',
+          workspaces: ['packages/*'],
+          overrides: {
+            'nested-dep': '1.0.0',
+          },
+        }),
+        packages: {
+          'pkg-a': {
+            'package.json': JSON.stringify({
+              name: 'workspace-a',
+              version: '1.0.0',
+              dependencies: {
+                'workspace-b': '1.0.0',
+              },
+            }),
+          },
+          'pkg-b': {
+            'package.json': JSON.stringify({
+              name: 'workspace-b',
+              version: '1.0.0',
+              dependencies: {
+                'nested-dep': '^2.0.0',
+              },
+            }),
+          },
+        },
+        node_modules: {
+          'workspace-a': t.fixture('symlink', '../packages/pkg-a'),
+          'workspace-b': t.fixture('symlink', '../packages/pkg-b'),
+          'nested-dep': {
+            'package.json': JSON.stringify({
+              name: 'nested-dep',
+              version: '1.0.0',
+            }),
+          },
+        },
+      },
+    })
+
+    await ls.exec([])
+    t.matchSnapshot(
+      cleanCwd(result()),
+      'should show nested overrides across workspaces'
+    )
+  })
+
+  t.test('filtering by overridden workspace dependency', async t => {
+    const { result, ls } = await mockLs(t, {
+      config: {},
+      prefixDir: {
+        'package.json': JSON.stringify({
+          name: 'root-project',
+          version: '1.0.0',
+          workspaces: ['packages/*'],
+          overrides: {
+            'dep-to-override': '1.0.0',
+          },
+        }),
+        packages: {
+          'pkg-a': {
+            'package.json': JSON.stringify({
+              name: 'workspace-pkg',
+              version: '1.0.0',
+              dependencies: {
+                'dep-to-override': '^2.0.0',
+              },
+            }),
+          },
+        },
+        node_modules: {
+          'workspace-pkg': t.fixture('symlink', '../packages/pkg-a'),
+          'dep-to-override': {
+            'package.json': JSON.stringify({
+              name: 'dep-to-override',
+              version: '1.0.0',
+            }),
+          },
+        },
+      },
+    })
+
+    await ls.exec(['dep-to-override'])
+    t.matchSnapshot(
+      cleanCwd(result()),
+      'should only show the overridden dependency when filtering'
+    )
+  })
+})
+
 t.test('ls --parseable', async t => {
   const parseable = { parseable: true }
   t.test('no args', async t => {
