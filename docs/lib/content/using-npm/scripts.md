@@ -41,6 +41,9 @@ situations. These scripts happen in addition to the `pre<event>`, `post<event>`,
 
 * `prepare`, `prepublish`, `prepublishOnly`, `prepack`, `postpack`, `dependencies`
 
+**preunpack**
+* Runs BEFORE installation, ONLY on `npm install`.
+
 **prepare** (since `npm@4.0.0`)
 * Runs BEFORE the package is packed, i.e. during `npm publish`
     and `npm pack`
@@ -111,6 +114,7 @@ The `dependencies` script is run any time an `npm` command causes changes to the
 
 #### [`npm ci`](/commands/npm-ci)
 
+* `preunpack`
 * `preinstall`
 * `install`
 * `postinstall`
@@ -130,6 +134,7 @@ The `dependencies` script is run any time an `npm` command causes changes to the
 
 These also run when you run `npm install -g <pkg-name>`
 
+* `preunpack`
 * `preinstall`
 * `install`
 * `postinstall`

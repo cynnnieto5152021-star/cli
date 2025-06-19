@@ -60,6 +60,7 @@ t.test('exec commands', async t => {
 
   await t.test('without args runs lifecycle scripts', async t => {
     const lifecycleScripts = [
+      'preunpack',
       'preinstall',
       'install',
       'postinstall',
@@ -235,6 +236,154 @@ t.test('exec commands', async t => {
     })
     await npm.exec('install', ['npm'])
     t.ok('No exceptions happen')
+  })
+
+  await t.test('preunpack lifecycle script tests', async t => {
+    await t.test('preunpack runs first in script order', async t => {
+      const scripts = []
+      const expectedOrder = ['preunpack', 'preinstall', 'install', 'postinstall']
+
+      const { npm, registry } = await loadMockNpm(t, {
+        config: { audit: false },
+        prefixDir: {
+          'package.json': JSON.stringify({
+            ...packageJson,
+            scripts: {
+              preunpack: 'echo preunpack',
+              preinstall: 'echo preinstall',
+              install: 'echo install',
+              postinstall: 'echo postinstall',
+            },
+          }),
+          abbrev,
+        },
+        mocks: {
+          '@npmcli/run-script': (opts) => {
+            scripts.push(opts.event)
+          },
+        },
+      })
+
+      const manifest = registry.manifest({ name: 'abbrev' })
+      await registry.package({ manifest })
+      await registry.tarball({
+        manifest: manifest.versions['1.0.0'],
+        tarball: path.join(npm.prefix, 'abbrev'),
+      })
+
+      await npm.exec('install')
+      t.same(scripts.slice(0, 4), expectedOrder, 'preunpack runs first, followed by other lifecycle scripts in correct order')
+    })
+
+    await t.test('preunpack does not run with --ignore-scripts', async t => {
+      const scripts = []
+
+      const { npm, registry } = await loadMockNpm(t, {
+        config: {
+          'ignore-scripts': true,
+          audit: false,
+        },
+        prefixDir: {
+          'package.json': JSON.stringify({
+            ...packageJson,
+            scripts: {
+              preunpack: 'echo preunpack',
+              preinstall: 'echo preinstall',
+            },
+          }),
+          abbrev,
+        },
+        mocks: {
+          '@npmcli/run-script': (opts) => {
+            scripts.push(opts.event)
+          },
+        },
+      })
+
+      const manifest = registry.manifest({ name: 'abbrev' })
+      await registry.package({ manifest })
+      await registry.tarball({
+        manifest: manifest.versions['1.0.0'],
+        tarball: path.join(npm.prefix, 'abbrev'),
+      })
+
+      await npm.exec('install')
+      t.same(scripts, [], 'no lifecycle scripts should run with --ignore-scripts')
+    })
+
+    await t.test('preunpack does not run when installing specific packages', async t => {
+      const scripts = []
+
+      const { npm, registry } = await loadMockNpm(t, {
+        config: { audit: false },
+        prefixDir: {
+          'package.json': JSON.stringify({
+            ...packageJson,
+            scripts: {
+              preunpack: 'echo preunpack',
+              preinstall: 'echo preinstall',
+            },
+          }),
+          abbrev,
+        },
+        mocks: {
+          '@npmcli/run-script': (opts) => {
+            scripts.push(opts.event)
+          },
+        },
+      })
+
+      const manifest = registry.manifest({ name: 'abbrev' })
+      await registry.package({ manifest })
+      await registry.tarball({
+        manifest: manifest.versions['1.0.0'],
+        tarball: path.join(npm.prefix, 'abbrev'),
+      })
+
+      await npm.exec('install', ['abbrev'])
+      t.same(scripts, [], 'no project lifecycle scripts should run when installing specific packages')
+    })
+
+    await t.test('preunpack runs before arborist reify (actual unpacking)', async t => {
+      const events = []
+      let reifyCalled = false
+
+      const { npm } = await loadMockNpm(t, {
+        config: { audit: false },
+        prefixDir: {
+          'package.json': JSON.stringify({
+            ...packageJson,
+            scripts: {
+              preunpack: 'echo preunpack',
+            },
+          }),
+        },
+        mocks: {
+          '{LIB}/utils/reify-finish.js': async () => {},
+          '@npmcli/run-script': (opts) => {
+            if (opts.event === 'preunpack') {
+              events.push('preunpack')
+              t.notOk(reifyCalled, 'preunpack should run before arborist.reify is called')
+            }
+          },
+          '@npmcli/arborist': function () {
+            this.loadActual = async () => ({})
+            this.loadVirtual = async () => ({})
+            this.buildIdealTree = async () => ({})
+            this.reify = async () => {
+              reifyCalled = true
+              events.push('reify')
+              t.ok(events.includes('preunpack'), 'preunpack should have run before reify')
+              return {}
+            }
+          },
+        },
+      })
+
+      await npm.exec('install')
+      t.same(events, ['preunpack', 'reify'], 'preunpack should run before reify (actual unpacking)')
+      t.ok(reifyCalled, 'arborist reify should have been called')
+    })
   })
 })
 
