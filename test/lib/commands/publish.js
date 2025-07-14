@@ -1024,6 +1024,7 @@ const oidcPublishTest = ({
         ...mockOidcTokenExchangeOptions,
       })
     }
+
     registry.publish(packageName, publishOptions)
 
     if ((oidc.github || oidc.gitlab) && provenance) {
@@ -1276,6 +1277,27 @@ t.test('oidc token exchange - no provenance', t => {
     },
     load: {
       registry: 'https://registry.zzz.org',
+    },
+  }))
+
+  t.test('dry-run can be used to check oidc config but not publish', oidcPublishTest({
+    oidcOptions: { github: true },
+    config: {
+      '//registry.npmjs.org/:_authToken': 'existing-fallback-token',
+      'dry-run': true,
+    },
+    mockGithubOidcOptions: {
+      audience: 'npm:registry.npmjs.org',
+      idToken: githubPrivateIdToken,
+    },
+    mockOidcTokenExchangeOptions: {
+      idToken: githubPrivateIdToken,
+      body: {
+        token: 'exchange-token',
+      },
+    },
+    publishOptions: {
+      noPut: true,
     },
   }))
 
