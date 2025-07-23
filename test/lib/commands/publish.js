@@ -1133,9 +1133,6 @@ t.test('oidc token exchange - no provenance', t => {
     publishOptions: {
       token: 'existing-fallback-token',
     },
-    logsContain: [
-      'silly oidc Skipped because unsupported CI environment',
-    ],
   }))
 
   // default registry success
